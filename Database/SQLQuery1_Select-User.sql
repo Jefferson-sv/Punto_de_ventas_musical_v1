@@ -12,3 +12,6 @@ GO
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Usuarios TO Market_User;
 GO
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.ventas TO Market_User;
+GO
