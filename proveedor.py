@@ -3,10 +3,8 @@ from tkinter import *
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from PIL import Image, ImageTk
-import datetime
-import sys
 import os
-
+import sys
 
 class Proveedor(Frame):
     def __init__(self, padre):
@@ -22,97 +20,63 @@ class Proveedor(Frame):
             rutabase = os.path.abspath(".")
         return os.path.join(rutabase, ruta)
 
-    #               SECCIÓN DE WIDGETS / INTERFAZ
     def widgets(self):
         self.frame = Frame(self, bg="#C6D9E3", highlightbackground="gray", highlightthickness=1)
         self.frame.place(x=0, y=0, width=1100, height=610)
 
+        # LabelFrame con entradas
         self.labelframe = tk.LabelFrame(self.frame, text="Proveedores", font="sans 22 bold", bg="#C6D9E3")
-        self.labelframe.place(x=20, y=30, width=400, height=500)
+        self.labelframe.place(x=20, y=30, width=400, height=550)
 
-        lblnombre = tk.Label(self.labelframe, text="Nombre:", font="sans 14 bold", bg="#C6D9E3")
-        lblnombre.place(x=10, y=20)
-        self.nombre = ttk.Entry(self.labelframe, font="sans 14 bold")
-        self.nombre.place(x=140, y=20, width=240, height=40)
+        campos = ["Nombre", "Identificación", "Celular", "Dirección", "Correo"]
+        self.entries = {}
+        for i, campo in enumerate(campos):
+            lbl = tk.Label(self.labelframe, text=f"{campo}:", font="sans 14 bold", bg="#C6D9E3")
+            lbl.place(x=10, y=20 + i*60)
+            ent = ttk.Entry(self.labelframe, font="sans 14 bold")
+            ent.place(x=140, y=20 + i*60, width=240, height=40)
+            self.entries[campo.lower()] = ent
 
-        lblid = tk.Label(self.labelframe, text="Identificación:", font="sans 14 bold", bg="#C6D9E3")
-        lblid.place(x=10, y=80)
-        self.identificacion = ttk.Entry(self.labelframe, font="sans 14 bold")
-        self.identificacion.place(x=140, y=80, width=240, height=40)
+        # Botones
+        botones_info = [("Ingresar", self.registrar, "icono/ingresarc.png"),
+                        ("Eliminar", self.eliminar, "icono/eliminar.png"),
+                        ("Modificar", self.modificar, "icono/modificar.png")]
 
-        lblcelular = Label(self.labelframe, text="Celular:", font="sans 14 bold", bg="#C6D9E3")
-        lblcelular.place(x=10, y=140)
-        self.celular = ttk.Entry(self.labelframe, font="sans 14 bold")
-        self.celular.place(x=140, y=140, width=240, height=40)
+        for i, (text, cmd, icono) in enumerate(botones_info):
+            ruta = self.rutas(icono)
+            imagen_pil = Image.open(ruta).resize((50, 50))
+            imagen_tk = ImageTk.PhotoImage(imagen_pil)
+            btn = Button(self.labelframe, text=text, bg="#dddddd", fg="black", font="roboto 12 bold", command=cmd)
+            btn.config(image=imagen_tk, compound="top", padx=10)
+            btn.image = imagen_tk
+            btn.place(x=50 + i*100, y=400, width=80, height=80)
 
-        lbldireccion = tk.Label(self.labelframe, text="Dirección:", font="sans 14 bold", bg="#C6D9E3")
-        lbldireccion.place(x=10, y=200)
-        self.direccion = ttk.Entry(self.labelframe, font="sans 14 bold")
-        self.direccion.place(x=140, y=200, width=240, height=40)
-
-        lblcorreo = tk.Label(self.labelframe, text="Correo:", font="sans 14 bold", bg="#C6D9E3")
-        lblcorreo.place(x=10, y=260)
-        self.correo = ttk.Entry(self.labelframe, font="sans 14 bold")
-        self.correo.place(x=140, y=260, width=240, height=40)
-
-        # -------------------- Botones --------------------
-        ruta = self.rutas(r"icono/ingresarc.png")
-        img = ImageTk.PhotoImage(Image.open(ruta).resize((50, 50)))
-        btn1 = Button(self.labelframe, bg="#dddddd", fg="black", text="Ingresar", font="roboto 12 bold", image=img, compound="top", padx=10, command=self.registrar)
-        btn1.image = img
-        btn1.place(x=50, y=340, width=80, height=80)
-
-        ruta = self.rutas(r"icono/eliminar.png")
-        img2 = ImageTk.PhotoImage(Image.open(ruta).resize((50, 50)))
-        btn_eliminar = Button(self.labelframe, bg="#dddddd", fg="black", text="Eliminar", font="roboto 12 bold", image=img2, compound="top", padx=10, command=self.eliminar)
-        btn_eliminar.image = img2
-        btn_eliminar.place(x=150, y=340, width=80, height=80)
-
-        ruta = self.rutas(r"icono/modificar.png")
-        img3 = ImageTk.PhotoImage(Image.open(ruta).resize((50, 50)))
-        btn_modificar = Button(self.labelframe, bg="#dddddd", fg="black", text="Modificar", font="roboto 12 bold", image=img3, compound="top", padx=10, command=self.modificar)
-        btn_modificar.image = img3
-        btn_modificar.place(x=250, y=340, width=80, height=80)
-
-        # -------------------- Treeview --------------------
+        # Treeview
         treFrame = Frame(self.frame, bg="white")
         treFrame.place(x=440, y=50, width=620, height=450)
 
         scrol_y = ttk.Scrollbar(treFrame)
         scrol_y.pack(side=RIGHT, fill=Y)
-
         scrol_x = ttk.Scrollbar(treFrame, orient=HORIZONTAL)
         scrol_x.pack(side=BOTTOM, fill=X)
 
-        self.tre = ttk.Treeview(
-            treFrame,
-            yscrollcommand=scrol_y.set,
-            xscrollcommand=scrol_x.set,
-            height=40,
-            columns=("ID", "Nombre", "Identificación", "Celular", "Dirección", "Correo"),
-            show="headings"
-        )
+        columnas = ("ID", "Nombre", "Identificación", "Celular", "Dirección", "Correo", "Estado")
+        self.tre = ttk.Treeview(treFrame, yscrollcommand=scrol_y.set, xscrollcommand=scrol_x.set, height=40,
+                                columns=columnas, show="headings")
         self.tre.pack(expand=True, fill=BOTH)
         scrol_y.config(command=self.tre.yview)
         scrol_x.config(command=self.tre.xview)
 
-        self.tre.heading("ID", text="ID")
-        self.tre.heading("Nombre", text="Nombre")
-        self.tre.heading("Identificación", text="Identificación")
-        self.tre.heading("Celular", text="Celular")
-        self.tre.heading("Dirección", text="Dirección")
-        self.tre.heading("Correo", text="Correo")
+        width_map = {
+            "ID": 50, "Nombre": 150, "Identificación": 120,
+            "Celular": 120, "Dirección": 200, "Correo": 200, "Estado": 100
+        }
+        for col in columnas:
+            self.tre.heading(col, text=col)
+            self.tre.column(col, width=width_map[col], anchor="center")
 
-        self.tre.column("ID", width=50, anchor="center")
-        self.tre.column("Nombre", width=150, anchor="center")
-        self.tre.column("Identificación", width=120, anchor="center")
-        self.tre.column("Celular", width=120, anchor="center")
-        self.tre.column("Dirección", width=200, anchor="center")
-        self.tre.column("Correo", width=200, anchor="center")
-
-    #                 SECCIÓN BASE DE DATOS (SQL SERVER)
+    # ========================== TABLA ========================== #
     def crear_tabla(self):
-        # Crea la tabla 'proveedores' si no existe.
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -124,7 +88,8 @@ class Proveedor(Frame):
                 identificacion NVARCHAR(50),
                 celular NVARCHAR(20),
                 direccion NVARCHAR(150),
-                correo NVARCHAR(100)
+                correo NVARCHAR(100),
+                estado BIT DEFAULT 1
             )
             """)
             conn.commit()
@@ -132,33 +97,38 @@ class Proveedor(Frame):
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo crear la tabla: {e}")
 
+    # ========================== CARGAR REGISTROS ========================== #
     def cargar_registros(self):
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT id_proveedor, nombre, identificacion, celular, direccion, correo FROM proveedores")
+            cursor.execute("SELECT id_proveedor, nombre, identificacion, celular, direccion, correo, estado FROM proveedores")
             rows = cursor.fetchall()
             self.tre.delete(*self.tre.get_children())
             for row in rows:
-                self.tre.insert("", "end", values=list(row))
-
+                id_proveedor, nombre, ident, celular, direccion, correo, estado = row
+                estado_texto = "Habilitado" if estado == 1 else "Deshabilitado"
+                item_id = self.tre.insert("", "end", values=(id_proveedor, nombre, ident, celular, direccion, correo, estado_texto))
+                if estado == 0:
+                    self.tre.item(item_id, tags=("deshabilitado",))
+            self.tre.tag_configure("deshabilitado", foreground="red")
             conn.close()
-
         except Exception as e:
             messagebox.showerror("Error", f"No se pudieron cargar los registros: {e}")
 
+    # ========================== REGISTRAR ========================== #
     def registrar(self):
-        #Inserta un nuevo proveedor.
-        if not self.nombre.get() or not self.identificacion.get() or not self.celular.get() or not self.direccion.get() or not self.correo.get():
+        datos = [self.entries[c].get() for c in ["nombre","identificación","celular","dirección","correo"]]
+        if any(d == "" for d in datos):
             messagebox.showerror("Error", "Todos los campos son requeridos.")
             return
         try:
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute("""
-            INSERT INTO proveedores (nombre, identificacion, celular, direccion, correo)
-            VALUES (?, ?, ?, ?, ?)
-            """, (self.nombre.get(), self.identificacion.get(), self.celular.get(), self.direccion.get(), self.correo.get()))
+                INSERT INTO proveedores (nombre, identificacion, celular, direccion, correo, estado)
+                VALUES (?, ?, ?, ?, ?, 1)
+            """, tuple(datos))
             conn.commit()
             conn.close()
             messagebox.showinfo("Éxito", "Proveedor registrado correctamente.")
@@ -167,20 +137,17 @@ class Proveedor(Frame):
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo registrar el proveedor: {e}")
 
+    # ========================== ELIMINAR ========================== #
     def eliminar(self):
-        #Elimina un proveedor seleccionado.
         if not self.tre.selection():
             messagebox.showerror("Error", "Seleccione un proveedor para eliminar.")
             return
-
         pin = simpledialog.askstring("PIN de seguridad", "Ingrese el PIN de seguridad:", show="*")
-        if not pin or pin != "2024":
+        if pin != "2024":
             messagebox.showerror("Error", "PIN incorrecto.")
             return
-
         item = self.tre.selection()[0]
         id_proveedor = self.tre.item(item, "values")[0]
-
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -192,56 +159,83 @@ class Proveedor(Frame):
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo eliminar el proveedor: {e}")
 
+    # ========================== MODIFICAR ========================== #
     def modificar(self):
-        """Permite editar un proveedor seleccionado."""
         if not self.tre.selection():
             messagebox.showerror("Error", "Seleccione un proveedor para modificar.")
             return
-
         item = self.tre.selection()[0]
-        datos = self.tre.item(item, "values")
-        id_proveedor = datos[0]
+        id_proveedor = self.tre.item(item, "values")[0]
 
-        top_modificar = Toplevel(self)
-        top_modificar.title("Modificar Proveedor")
-        top_modificar.geometry("400x400")
-        top_modificar.config(bg="#C6D9E3")
+        # Traer datos de DB
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT nombre, identificacion, celular, direccion, correo, estado FROM proveedores WHERE id_proveedor=?", (id_proveedor,))
+            row = cursor.fetchone()
+            conn.close()
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudieron cargar los datos: {e}")
+            return
+
+        nombre_actual, ident_actual, celular_actual, dir_actual, correo_actual, estado_actual = row
+
+        top_mod = Toplevel(self)
+        top_mod.title("Modificar Proveedor")
+        top_mod.geometry("400x450")
+        top_mod.config(bg="#C6D9E3")
 
         labels = ["Nombre", "Identificación", "Celular", "Dirección", "Correo"]
+        actuales = [nombre_actual, ident_actual, celular_actual, dir_actual, correo_actual]
         entries = []
-        for i, campo in enumerate(datos[1:], start=0):
-            tk.Label(top_modificar, text=f"{labels[i]}:", font="sans 14 bold", bg="#C6D9E3").grid(row=i, column=0, padx=10, pady=5)
-            entry = tk.Entry(top_modificar, font="sans 14 bold")
-            entry.insert(0, campo)
+        for i, val in enumerate(actuales):
+            tk.Label(top_mod, text=f"{labels[i]}:", font="sans 14 bold", bg="#C6D9E3").grid(row=i, column=0, padx=10, pady=5)
+            entry = tk.Entry(top_mod, font="sans 14 bold")
+            entry.insert(0, val)
             entry.grid(row=i, column=1, padx=10, pady=5)
             entries.append(entry)
 
+        # Estado Checkbutton
+        estado_var = tk.BooleanVar(value=bool(estado_actual))
+        chk = tk.Checkbutton(top_mod, text="Habilitado" if estado_var.get() else "Deshabilitado",
+                             variable=estado_var,
+                             font="sans 14 bold", bg="#C6D9E3",
+                             command=lambda: chk.config(text="Habilitado" if estado_var.get() else "Deshabilitado"))
+        chk.grid(row=5, column=1, pady=10)
+
+        # Guardar cambios con verificación de PIN si cambia estado
         def guardar_cambios():
+            nuevos = [e.get() for e in entries]
+            if bool(estado_actual) != estado_var.get():
+                pin = simpledialog.askstring("PIN de seguridad", "Ingrese PIN de administrador para cambiar estado:", show="*")
+                if pin != "2024":
+                    messagebox.showerror("Error", "PIN incorrecto. No se puede cambiar el estado.")
+                    estado_var.set(bool(estado_actual))
+                    return
+            nuevo_estado = 1 if estado_var.get() else 0
             try:
                 conn = get_connection()
                 cursor = conn.cursor()
                 cursor.execute("""
-                    UPDATE proveedores
-                    SET nombre=?, identificacion=?, celular=?, direccion=?, correo=?
+                    UPDATE proveedores SET nombre=?, identificacion=?, celular=?, direccion=?, correo=?, estado=?
                     WHERE id_proveedor=?
-                """, (entries[0].get(), entries[1].get(), entries[2].get(), entries[3].get(), entries[4].get(), id_proveedor))
+                """, (*nuevos, nuevo_estado, id_proveedor))
                 conn.commit()
                 conn.close()
-                messagebox.showinfo("Éxito", "Proveedor modificado correctamente.")
-                top_modificar.destroy()
                 self.cargar_registros()
+                top_mod.destroy()
+                messagebox.showinfo("Éxito", "Proveedor modificado correctamente.")
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo modificar el proveedor: {e}")
 
         ruta = self.rutas(r"icono/guardar.png")
         img_save = ImageTk.PhotoImage(Image.open(ruta).resize((30, 30)))
-        btn_guardar = Button(top_modificar, text="Guardar cambios", bg="#dddddd", fg="black", font="sans 14 bold", image=img_save, compound=LEFT, padx=10, command=guardar_cambios)
+        btn_guardar = Button(top_mod, text="Guardar cambios", bg="#dddddd", font="sans 14 bold",
+                             image=img_save, compound=LEFT, padx=10, command=guardar_cambios)
         btn_guardar.image = img_save
-        btn_guardar.place(x=80, y=200, width=240, height=40)
+        btn_guardar.place(x=80, y=300, width=240, height=40)
 
+    # ========================== LIMPIAR CAMPOS ========================== #
     def limpiar_campos(self):
-        self.nombre.delete(0, END)
-        self.identificacion.delete(0, END)
-        self.celular.delete(0, END)
-        self.direccion.delete(0, END)
-        self.correo.delete(0, END)
+        for ent in self.entries.values():
+            ent.delete(0, END)

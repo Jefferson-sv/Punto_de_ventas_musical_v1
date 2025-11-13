@@ -1,13 +1,11 @@
 from config import get_connection
 from tkinter import *
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 from PIL import Image, ImageTk
-from tkcalendar import DateEntry
 import threading
-import babel.numbers
-import sys
 import os
+import sys
 import re
 import pyodbc
 
@@ -18,15 +16,16 @@ class Inventario(tk.Frame):
         super().__init__(padre)
         self.con = get_connection()
         self.cur = self.con.cursor()
-        self.widgets()
-        self.articulos_combobox()
-        self.cargar_articulos()
         self.timer_articulos = None
 
         # Carpeta para almacenar las imágenes
         self.image_folder = "fotos"
         if not os.path.exists(self.image_folder):
             os.makedirs(self.image_folder)
+
+        self.widgets()
+        self.articulos_combobox()
+        self.cargar_articulos()
 
     def rutas(self, ruta):
         try:
@@ -51,7 +50,6 @@ class Inventario(tk.Frame):
 
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
         self.scrollbar.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
 
@@ -147,7 +145,6 @@ class Inventario(tk.Frame):
             self.cur.execute(query)
 
         articulos = self.cur.fetchall()
-
         self.row, self.column = 0, 0
         for articulo, precio, image_path in articulos:
             self.mostrar_articulo(articulo, precio, image_path)
@@ -188,18 +185,19 @@ class Inventario(tk.Frame):
             resultado = self.cur.fetchone()
             if resultado:
                 articulo, precio, costo, stock, estado = resultado
-                self.label1.config(text=f"Articulo: {articulo}")
+                estado_texto = "Habilitado" if estado == 1 else "Deshabilitado"
+                self.label1.config(text=f"Artículo: {articulo}")
                 self.label2.config(text=f"Precio: {precio}")
                 self.label3.config(text=f"Costo: {costo}")
                 self.label4.config(text=f"Stock: {stock}")
-                self.label5.config(text=f"Estado: {estado}", fg=(
-                    "green" if estado.lower() == "activo" else "red" if estado.lower() == "inactivo" else "black"))
+                self.label5.config(text=f"Estado: {estado_texto}", fg=("green" if estado == 1 else "red"))
             else:
-                self.label1.config(text="Articulo: No encontrado")
+                self.label1.config(text="Artículo: No encontrado")
                 self.label2.config(text="Precio: N/A")
                 self.label3.config(text="Costo: N/A")
                 self.label4.config(text="Stock: N/A")
                 self.label5.config(text="Estado: N/A", fg="black")
+
         except pyodbc.Error as e:
             messagebox.showerror("Error", "Error al obtener los datos del artículo")
 
@@ -229,7 +227,7 @@ class Inventario(tk.Frame):
         top.focus_set()
         top.lift()
 
-        # Campos
+        # ---------------- CAMPOS ---------------- #
         tk.Label(top, text="Artículo: ", font="arial 12 bold", bg="#C6D9E3").place(x=20, y=20)
         entry_articulo = ttk.Entry(top, font="arial 12 bold")
         entry_articulo.place(x=120, y=20, width=250)
@@ -246,20 +244,21 @@ class Inventario(tk.Frame):
         entry_stock = ttk.Entry(top, font="arial 12 bold")
         entry_stock.place(x=120, y=140, width=250)
 
+        # Estado como Checkbutton
         tk.Label(top, text="Estado: ", font="arial 12 bold", bg="#C6D9E3").place(x=20, y=180)
-        entry_estado = ttk.Combobox(top, values=["Activo", "Inactivo"], state="readonly", font="arial 12 bold")
-        entry_estado.place(x=120, y=180, width=250)
+        estado_var = tk.BooleanVar(value=True)
+        chk_estado = tk.Checkbutton(top, text="Habilitado", font="arial 12 bold", bg="#C6D9E3", variable=estado_var)
+        chk_estado.place(x=120, y=180)
 
+        # Proveedor
         tk.Label(top, text="Proveedor: ", font="arial 12 bold", bg="#C6D9E3").place(x=20, y=220)
         entry_proveedor = ttk.Combobox(top, font="arial 12 bold")
         entry_proveedor.place(x=120, y=220, width=250)
-
-        # Cargar los proveedores
         self.cur.execute("SELECT id_proveedor, nombre FROM Proveedores")
         proveedores = self.cur.fetchall()
         entry_proveedor['values'] = [prov[1] for prov in proveedores]
 
-        # Frame para la imagen
+        # Imagen
         self.frameimg = tk.Frame(top, bg="white", highlightbackground="gray", highlightthickness=1)
         self.frameimg.place(x=440, y=30, width=200, height=200)
 
@@ -271,25 +270,17 @@ class Inventario(tk.Frame):
         btnimagen.image = imagen_tk
         btnimagen.place(x=450, y=260, width=200, height=40)
 
-        # Botón de Guardar
+        # Guardar
         def guardar():
             articulo = entry_articulo.get()
             precio = entry_precio.get()
             costo = entry_costo.get()
             stock = entry_stock.get()
-            estado = entry_estado.get()
+            estado = 1 if estado_var.get() else 0
             proveedor_nombre = entry_proveedor.get()
 
-            # Validaciones
-            if not all([articulo, precio, costo, stock, estado, proveedor_nombre]):
+            if not all([articulo, precio, costo, stock, proveedor_nombre]):
                 messagebox.showerror("Error", "Todos los campos deben ser completados")
-                return
-            if ',' in precio or ',' in costo:
-                messagebox.showwarning("Advertencia", "No coloque comas. Use punto para decimales")
-                return
-            decimal_pattern = r'^\d+(\.\d{1,2})?$'
-            if not re.match(decimal_pattern, precio) or not re.match(decimal_pattern, costo):
-                messagebox.showwarning("Advertencia", "Máximo dos decimales")
                 return
             try:
                 precio = float(precio)
@@ -298,11 +289,11 @@ class Inventario(tk.Frame):
             except ValueError:
                 messagebox.showerror("Error", "Precio, costo y stock deben ser números válidos")
                 return
-            # Imagen
+
             image_path = getattr(self, 'image_path', self.rutas("fotos/default.png"))
 
             # Obtener id_proveedor
-            self.cur.execute("SELECT id_proveedor FROM Proveedores WHERE nombre=%s", (proveedor_nombre,))
+            self.cur.execute("SELECT id_proveedor FROM Proveedores WHERE nombre=?", (proveedor_nombre,))
             id_proveedor = self.cur.fetchone()[0]
 
             # Insertar en DB
@@ -310,13 +301,13 @@ class Inventario(tk.Frame):
                 "INSERT INTO Articulos (articulo, precio, costo, stock, estado, image_path, id_proveedor) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (articulo, precio, costo, stock, estado, image_path, id_proveedor)
             )
-
             self.con.commit()
             messagebox.showinfo("Éxito", "Artículo agregado correctamente")
             top.destroy()
             self.cargar_articulos()
             self.articulos_combobox()
 
+        # Botones Guardar y Cancelar
         ruta = self.rutas(r"icono/guardar.png")
         imagen_pil = Image.open(ruta).resize((30, 30))
         imagen_tk = ImageTk.PhotoImage(imagen_pil)
@@ -325,7 +316,6 @@ class Inventario(tk.Frame):
         btnguardar.image = imagen_tk
         btnguardar.place(x=50, y=320, width=150, height=40)
 
-        # Botón Cancelar
         ruta = self.rutas(r"icono/cancelar.png")
         imagen_pil = Image.open(ruta).resize((30, 30))
         imagen_tk = ImageTk.PhotoImage(imagen_pil)
@@ -334,16 +324,17 @@ class Inventario(tk.Frame):
         btncancelar.image = imagen_tk
         btncancelar.place(x=250, y=320, width=150, height=40)
 
-    # editar articulo
+    # ========================== EDITAR ARTICULO ========================== #
     def editar_articulo(self):
         articulo_seleccionado = self.comboboxbuscar.get()
         if not articulo_seleccionado:
             messagebox.showwarning("Advertencia", "Seleccione un artículo primero")
             return
 
-        # Obtener datos actuales del artículo
-        self.cur.execute("SELECT articulo, precio, costo, stock, estado, id_proveedor, image_path FROM Articulos WHERE articulo=?",
-                         (articulo_seleccionado,))
+        # Obtener datos actuales
+        self.cur.execute(
+            "SELECT articulo, precio, costo, stock, estado, id_proveedor, image_path FROM Articulos WHERE articulo=?",
+            (articulo_seleccionado,))
         resultado = self.cur.fetchone()
         if not resultado:
             messagebox.showerror("Error", "No se encontró el artículo seleccionado")
@@ -361,7 +352,7 @@ class Inventario(tk.Frame):
         top.focus_set()
         top.lift()
 
-        # ============= CAMPOS ============= #
+        # Campos
         tk.Label(top, text="Artículo: ", font="arial 12 bold", bg="#C6D9E3").place(x=20, y=20)
         entry_articulo = ttk.Entry(top, font="arial 12 bold")
         entry_articulo.place(x=120, y=20, width=250)
@@ -382,26 +373,35 @@ class Inventario(tk.Frame):
         entry_stock.place(x=120, y=140, width=250)
         entry_stock.insert(0, stock)
 
+        # Estado Checkbutton con verificación admin
         tk.Label(top, text="Estado: ", font="arial 12 bold", bg="#C6D9E3").place(x=20, y=180)
-        entry_estado = ttk.Combobox(top, values=["Activo", "Inactivo"], state="readonly", font="arial 12 bold")
-        entry_estado.place(x=120, y=180, width=250)
-        entry_estado.set(estado)
+        estado_var = tk.BooleanVar(value=bool(estado))
 
+        def toggle_estado():
+            if estado_var.get() == False:
+                if not self.verificar_admin():
+                    estado_var.set(True)
+
+        chk_estado = tk.Checkbutton(top, text="Habilitado" if estado_var.get() else "Deshabilitado",
+                                    font="arial 12 bold", bg="#C6D9E3",
+                                    variable=estado_var,
+                                    command=lambda: chk_estado.config(
+                                        text="Habilitado" if estado_var.get() else "Deshabilitado") or toggle_estado())
+        chk_estado.place(x=120, y=180)
+
+        # Proveedor
         tk.Label(top, text="Proveedor: ", font="arial 12 bold", bg="#C6D9E3").place(x=20, y=220)
         entry_proveedor = ttk.Combobox(top, font="arial 12 bold")
         entry_proveedor.place(x=120, y=220, width=250)
-
-        # Cargar proveedores
         self.cur.execute("SELECT id_proveedor, nombre FROM Proveedores")
         proveedores = self.cur.fetchall()
         entry_proveedor['values'] = [prov[1] for prov in proveedores]
         proveedor_actual = [prov[1] for prov in proveedores if prov[0] == id_proveedor][0]
         entry_proveedor.set(proveedor_actual)
 
-        # Frame para imagen
+        # Imagen
         self.frameimg = tk.Frame(top, bg="white", highlightbackground="gray", highlightthickness=1)
         self.frameimg.place(x=440, y=30, width=200, height=200)
-
         if image_path and os.path.exists(image_path):
             image = Image.open(image_path).resize((200, 200), Image.LANCZOS)
             self.image_tk = ImageTk.PhotoImage(image)
@@ -418,20 +418,18 @@ class Inventario(tk.Frame):
         btnimagen.image = imagen_tk
         btnimagen.place(x=450, y=260, width=200, height=40)
 
-        # ================= GUARDAR CAMBIOS ================ #
+        # Guardar cambios
         def guardar_cambios():
             nuevo_articulo = entry_articulo.get()
             nuevo_precio = entry_precio.get()
             nuevo_costo = entry_costo.get()
             nuevo_stock = entry_stock.get()
-            nuevo_estado = entry_estado.get()
+            nuevo_estado = 1 if estado_var.get() else 0
             proveedor_nombre = entry_proveedor.get()
 
-            # Validaciones
-            if not all([nuevo_articulo, nuevo_precio, nuevo_costo, nuevo_stock, nuevo_estado, proveedor_nombre]):
+            if not all([nuevo_articulo, nuevo_precio, nuevo_costo, nuevo_stock, proveedor_nombre]):
                 messagebox.showerror("Error", "Todos los campos deben ser completados")
                 return
-
             try:
                 nuevo_precio = float(nuevo_precio)
                 nuevo_costo = float(nuevo_costo)
@@ -441,15 +439,12 @@ class Inventario(tk.Frame):
                 return
 
             image_path_actual = getattr(self, 'image_path', image_path)
-
-            # Obtener id_proveedor
             self.cur.execute("SELECT id_proveedor FROM Proveedores WHERE nombre=?", (proveedor_nombre,))
+            id_proveedor = self.cur.fetchone()[0]
 
-            # UPDATE
             self.cur.execute(
                 "UPDATE Articulos SET articulo=?, precio=?, costo=?, stock=?, estado=?, image_path=?, id_proveedor=? WHERE articulo=?",
-                (nuevo_articulo, nuevo_precio, nuevo_costo, nuevo_stock, nuevo_estado, image_path_actual, id_proveedor,
-                 articulo_seleccionado)
+                (nuevo_articulo, nuevo_precio, nuevo_costo, nuevo_stock, nuevo_estado, image_path_actual, id_proveedor, articulo_seleccionado)
             )
             self.con.commit()
             messagebox.showinfo("Éxito", "Artículo actualizado correctamente")
@@ -457,6 +452,7 @@ class Inventario(tk.Frame):
             self.cargar_articulos()
             self.articulos_combobox()
 
+        # Botones
         ruta = self.rutas(r"icono/guardar.png")
         imagen_pil = Image.open(ruta).resize((30, 30))
         imagen_tk = ImageTk.PhotoImage(imagen_pil)
@@ -473,3 +469,15 @@ class Inventario(tk.Frame):
         btncancelar.image = imagen_tk
         btncancelar.place(x=250, y=320, width=150, height=40)
 
+    # ========================== VERIFICACION ADMIN ========================== #
+    def verificar_admin(self):
+        password = simpledialog.askstring("Autorización requerida", "Ingrese la contraseña del administrador:", show="*")
+        if not password:
+            messagebox.showwarning("Cancelado", "Operación cancelada.")
+            return False
+        mi_contraseña = "2024"
+        if password == mi_contraseña:
+            return True
+        else:
+            messagebox.showerror("Acceso denegado", "Contraseña incorrecta.")
+            return False
